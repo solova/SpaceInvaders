@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+
+        <meta id="viewport" name="viewport" content="user-scalable=no, width=device-width" />
+
+        <title>index.html</title>
+
+        <link rel="stylesheet" href="css/alertify.css" type="text/css">
+        <link rel="stylesheet" href="css/styles.css" type="text/css">
+
+        <script type="text/javascript" charset="utf-8" src="js/alertify.js"></script>
+        <script type="text/javascript" charset="utf-8" src="js/dicten.js"></script>
+        <script type="text/javascript" charset="utf-8" src="js/game.js"></script>
+        <script type="text/javascript" charset="utf-8">
+        <!--
+        function init(){
+            game.start();
+        }
+
+        function start(){
+            game.start();
+        };
+
+        function rules(){
+            alertify.alert("<h3>The Rules</h3>The player controls a long, thin snake, which roams around on a bordered field, picking up the letters, trying to avoid hitting its own tail or the 'walls' that surround the playing area. Each time the snake eats a lettter, its tail grows longer, making the game increasingly difficult. The user controls the direction of the snake's head (left or right), and the snake's body follows it. The player cannot stop the snake from moving while the game is in progress, and cannot make the snake to go in reverse.<br /><br />To turn left/right you should touch left/right side of touch screen or press a left/right key on the bluetooth keyboard.<br /><br />Collecting letters in the right order, you can make the words<br />You receive one point for each letter and 10*n points  for each word.<br /><br />Have a good game!<br /><br /><h3>The Credits</h3>Designed and programmed by Aleksandr Solovey. <br />Sound by Koops<br />Music Theme by Kevin MacLeod.");
+        }
+
+        -->
+        </script>
+
+    </head>
+    <body onload="init()">
+        <div id="intro">
+            <div id="copyright">Space Invaders<br />&copy; A. Solovey 2013</div>
+            <img id="logo" src="img/logo.svg" width="80%" alt="" />
+            <div id="menu">
+                <button class="btn" onclick="start()">Start Game</button>
+                <button class="btn" onclick="rules()">Rules &amp; Credits</button>
+                <button class="btn" onclick="exit()">Exit</button>
+            </div>
+        </div>
+        <div id="screen">
+            <div id="bugs"></div>
+            <div id="ship">
+            </div>
+        </div>
+    </body>
+</html>
