@@ -10,41 +10,60 @@
         <link rel="stylesheet" href="css/alertify.css" type="text/css">
         <link rel="stylesheet" href="css/styles.css" type="text/css">
 
-        <script type="text/javascript" charset="utf-8" src="js/alertify.js"></script>
-        <script type="text/javascript" charset="utf-8" src="js/dicten.js"></script>
+        <script type="text/javascript" charset="utf-8" src="js/alertify.min.js"></script>
         <script type="text/javascript" charset="utf-8" src="js/game.js"></script>
         <script type="text/javascript" charset="utf-8">
         <!--
-        function init(){
-            game.start();
-        }
 
         function start(){
             game.start();
         };
 
         function rules(){
-            alertify.alert("<h3>The Rules</h3>The player controls a long, thin snake, which roams around on a bordered field, picking up the letters, trying to avoid hitting its own tail or the 'walls' that surround the playing area. Each time the snake eats a lettter, its tail grows longer, making the game increasingly difficult. The user controls the direction of the snake's head (left or right), and the snake's body follows it. The player cannot stop the snake from moving while the game is in progress, and cannot make the snake to go in reverse.<br /><br />To turn left/right you should touch left/right side of touch screen or press a left/right key on the bluetooth keyboard.<br /><br />Collecting letters in the right order, you can make the words<br />You receive one point for each letter and 10*n points  for each word.<br /><br />Have a good game!<br /><br /><h3>The Credits</h3>Designed and programmed by Aleksandr Solovey. <br />Sound by Koops<br />Music Theme by Kevin MacLeod.");
+            alertify.alert("<h3>Правила</h3>Управляйте кораблём и уничтожайте корабли захватчиков. Управление - стрелками, пробел - выстрел.");
+        }
+
+        function exit(){
+            alertify.alert("Только на мобильных платформах");
         }
 
         -->
         </script>
 
     </head>
-    <body onload="init()">
+    <body>
         <div id="intro">
             <div id="copyright">Space Invaders<br />&copy; A. Solovey 2013</div>
-            <img id="logo" src="img/logo.svg" width="80%" alt="" />
+            <img id="logo" src="img/logo.png" width="80%" alt="" />
             <div id="menu">
                 <button class="btn" onclick="start()">Start Game</button>
-                <button class="btn" onclick="rules()">Rules &amp; Credits</button>
-                <button class="btn" onclick="exit()">Exit</button>
+                <button class="btn" onclick="rules()">Правила</button>
+                <button class="btn" onclick="exit()">Выйти</button>
             </div>
         </div>
         <div id="screen">
+            <div id="info">FPS <span id="fps"> - </span> Уровень <span id="level">1</span> Очки <span id="scores">0</span></div>
             <div id="bugs"></div>
             <div id="ship">
             </div>
         </div>
+
+        <audio id="audio_blaster">
+           <source src="sounds/blaster.mp3" type="audio/mp3" preload="auto"/>
+           <source src="sounds/blaster.ogg" type="audio/ogg" preload="auto"/>
+        </audio>
+        <audio id="audio_boom">
+           <source src="sounds/boom.mp3" type="audio/mp3" preload="auto"/>
+           <source src="sounds/boom.ogg" type="audio/ogg" preload="auto"/>
+        </audio>
+        <audio id="audio_theme" loop="true">
+           <source src="sounds/theme.mp3" type="audio/mp3" preload="auto"/>
+           <source src="sounds/theme.ogg" type="audio/ogg" preload="auto"/>
+        </audio>
+        <audio id="audio_winner">
+           <source src="sounds/winner.mp3" type="audio/mp3" preload="auto"/>
+           <source src="sounds/winner.ogg" type="audio/ogg" preload="auto"/>
+        </audio>
+
     </body>
 </html>

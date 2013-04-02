@@ -1,116 +1,314 @@
 /**
- * snake
+ * Space Invaders
  * Arcade Game
  *
  * @author Aleksandr Solovey <bestua@gmail.com>
  * @copyright Aleksandr Solovey 2013
- * @version 0.8
+ * @version 1.0
+
+ 101010101011
+ 101010101010
+ 111001010011
  */
 
-/*global define*/
 (function (global, undefined) {
     "use strict";
 
     var document = global.document, Game;
-    var requestAnimationFrame = window.requestAnimationFrame || window.mozRequestAnimationFrame || window.webkitRequestAnimationFrame;
-    var _={random:function(a){return Math.floor(Math.random()*a+1)},sortedIndex:function(a,f){for(var b=0,c=a?a.length:b;b<c;){var d=b+c>>>1;a[d]<f?b=d+1:c=d}return b},throttle:function(a,f){function b(){g=new Date;e=null;d=a.apply(h,c)}var c,d,h,e,g=0;return function(){var j=new Date,k=f-(j-g);c=arguments;h=this;0>=k?(clearTimeout(e),e=null,g=j,d=a.apply(h,c)):e||(e=setTimeout(b,k));return d}}};
-    var margin = 2.5;
-    var lbound = margin;
-    var rbound = 100 - margin*2;
 
-    function is_intersect(a,b,e,f,c,d,g,h){return 0>((g-c)*(b-d)-(h-d)*(a-c))*((g-c)*(f-d)-(h-d)*(e-c))&&0>((e-a)*(d-b)-(f-b)*(c-a))*((e-a)*(h-b)-(f-b)*(g-a));}
+    //определение кроссбраузерных  вспомогательных функций
+    var requestAnimationFrame = (function () {
+        return window.requestAnimationFrame || window.webkitRequestAnimationFrame || window.mozRequestAnimationFrame || window.oRequestAnimationFrame || window.msRequestAnimationFrame ||
+        function (callback) {
+            window.setTimeout(callback, 1000 / 60);
+        };
+    })();
+    var getBounds=function(a){for(var b=0,c=0,d=a.offsetWidth,e=a.offsetHeight;a&&!isNaN(a.offsetLeft)&&!isNaN(a.offsetTop);)b+=a.offsetLeft-a.scrollLeft,c+=a.offsetTop-a.scrollTop,a=a.offsetParent;return{x0:b,y0:c,x1:b+d,y1:c+e}};
 
-    function Point(x,y){this.position={x:x,y:y};}
+    /** @const */var margin = 2.5; //горизонтальный отступ от краёв экрана ( впроцентах )
+    /** @const */var lbound = margin; //левая граница игрового поля
+    /** @const */var rbound = 100.0 - margin * 2.0; // правая граница игрового поля
 
-    Point.prototype.hitTest = function(obj, distance){
-        distance || (distance = 16);
-        var el1 = this.get('el');
-        var el2 = obj.get('el');
-        var w1 = getComputedStyle(el1).getPropertyValue('width') | 0;
-        var h1 = getComputedStyle(el1).getPropertyValue('height') | 0;
-        var w2 = getComputedStyle(el2).getPropertyValue('width') | 0;
-        var h2 = getComputedStyle(el2).getPropertyValue('height') | 0;
-        var x1 = el1.offsetLeft + w1/2;
-        var y1 = el1.offsetTop + h1/2;
-        var x2 = el2.offsetLeft + w2/2;
-        var y2 = el2.offsetTop + h2/2;
-        var d = (x2-x1)*(x2-x1)+(y2-y1)*(y2-y1);
-        // console.log('hittest', el1, el2, w1, h1, w2, h2);
-        // debugger;
+    /** @const */var BUGS_COUNT = 30; //количество жуков
 
-        return (d < distance * distance);
-    }
-    Point.prototype.get = function(property){return this[property];};
-    Point.prototype.set = function(property, value){ return this[property] = value;};
+    /** @const */var SHIP_WIDTH = 5.0; //ширина корабля (в процентах)
+    /** @const */var SHIP_SPEED = 20.0; //скорость перемещения корабля (проценты/с)
+    /** @const */var SHELL_WIDTH = 0.25; //ширина снаряда (в процентах)
+    /** @const */var SHELL_INITPOSITION = 5.0; //стартовая позиция снаряда
 
-    function Ship(el){
-        this.el = el;
-        this.x = 100 / 2;
-        this.width = 5.0;
-        this.move();
+    /** @const */var BUGHILL_WIDTH = 90.0; //ширина армады
+    /** @const */var BUGHILL_HSPEED = 0.5; //базовая скорость перемещения по горизонтали
+    /** @const */var BUGHILL_VSPEED = 0.05; //базовая скорость приближения
+
+    var isAudioSupport = (typeof(Audio)==='function')
+    var playSound = function(id){
+        if (isAudioSupport){
+            var sound = document.getElementById('audio_' + id);
+            sound.play();
+        }
     }
 
-    Ship.prototype = new Point();
-    Ship.prototype.move = function(shift){
-        shift || (shift = 0);
-        console.log('ship move');
-        this.x += shift;
-        if (this.x > 100) this.x=100;
-        if (this.x<0) this.x=0;
+    /**
+     * Создает экземпляр базовой сущности DOMPoint
+     *
+     * @constructor
+     * @this {DOMPoint}
+     */
+    function DOMPoint() {}
 
-        this.el.style.left = (lbound + this.x * rbound/100 - this.width/2).toFixed(2) + '%';
+    /**
+     * Определяет наличие пересечения между двумя объектами
+     *
+     * @param {DOMPoint} obj Объект с которым необходимо определить наличие пересечения
+     * @return {bool}
+     */
+    DOMPoint.prototype.hitTest = function (obj) {
+        var pos1 = getBounds(this.get('el'));
+        var pos2 = getBounds(obj.get('el'));
+        return !( pos2.x0 > pos1.x1 || pos2.x1 < pos1.x0 || pos2.y0 > pos1.y1 || pos2.y1 < pos1.y0);
+    }
+
+    /**
+     * Определяет взаимное положение объектов по вертикали
+     *
+     * @param {DOMPoint} obj Объект с которым необходимо определить наличие пересечения
+     * @return {bool}
+     */
+    DOMPoint.prototype.isUnder = function (obj) {
+        var pos1 = getBounds(this.get('el'));
+        var pos2 = getBounds(obj.get('el'));
+        return (pos2.y0 > pos1.y0);
+    }
+
+    /*
+     * Получает свойство объекта
+     * @param {string} property
+     * @return {*}
+     */
+    DOMPoint.prototype.get = function (property) {
+        return this[property];
     };
-    Ship.prototype.update = function(timeshift){
-        if (typeof(this.shell) !== 'undefined'){
+
+    /*
+     * Устанавливает свойство объекта
+     * @param {string} property
+     * @param {*} value
+     */
+    DOMPoint.prototype.set = function (property, value) {
+        this[property] = value;
+    };
+
+    /*
+     * Разрушает DOM-узел объекта
+     */
+    DOMPoint.prototype.destroy = function () {
+        this.el.parentNode.removeChild(this.el);
+    };
+
+    /**
+     * Создает экземпляр  Ship
+     *
+     * @constructor
+     * @property {object} el DOMElement
+     * @this {Ship}
+     */
+    function Ship(el) {
+        DOMPoint.call(this);
+        this.el = el;
+
+        this.x = 100 / 2; //стартовая позиция - центр экрана
+
+        this.width = SHIP_WIDTH;
+        this.move(0); //отрисовка корабля на правильной позиции
+    }
+
+    Ship.prototype = new DOMPoint();
+
+    /**
+     * Перемещает корабль
+     *
+     * @property {integer} shift Смещение корабля в процентах
+     */
+    Ship.prototype.move = function (shift) {
+        this.x += shift;
+        if (this.x > 100) this.x = 100;
+        if (this.x < 0) this.x = 0;
+
+        this.el.style.left = (lbound + this.x * rbound / 100 - this.width / 2).toFixed(2) + '%';
+    };
+
+    /**
+     * Обновляет состояние объекта
+     *
+     * @property {integer} timeshift Время с последней перерисовки, мс
+     */
+    Ship.prototype.update = function (timeshift) {
+        if (typeof (this.shell) !== 'undefined') {
             this.shell.update(timeshift);
-            if (this.shell.get('y') > 100){
-                this.el.parentNode.removeChild(this.shell.get('el'));
+            if (this.shell.get('y') > 100) {
+                this.shell.destroy();
                 delete this.shell;
             }
         }
     };
-    Ship.prototype.fire = function(){
-        if (typeof(this.shell) === 'undefined'){
 
+    /**
+     * Порождает снаряд
+     *
+     */
+    Ship.prototype.fire = function () {
+        if (typeof (this.shell) === 'undefined') {
             this.shell = new Shell(this);
+            playSound("blaster");
         }
-
     };
 
-    function Shell(context){
+    /**
+     * Создает экземпляр Shell (снаряд)
+     *
+     * @constructor
+     * @property {object} ship DOMElement родителя (корабля)
+     * @this {Shell}
+     */
+    function Shell(ship) {
+        DOMPoint.call(this);
+
+        this.width = SHELL_WIDTH;
+        this.y = SHELL_INITPOSITION;
+
         this.el = document.createElement("div");
         this.el.className = "shell";
-        this.y = parseFloat(this.el.style.bottom) || 5;
-        this.width = 0.25;
-        this.el.style.left = (lbound + context.x*rbound/100 - this.width/2).toFixed(2) + '%';
+        this.el.style.left = (lbound + ship.x * rbound / 100 - this.width / 2).toFixed(2) + '%';
 
-        var ship = context.el;
-        ship.parentNode.appendChild(this.el);
+        ship.get('el').parentNode.appendChild(this.el);
     }
 
-    Shell.prototype = new Point();
-    Shell.prototype.update = function(timeshift){
-        //console.log('shell update', this.y);
-        this.y += 1 * (timeshift/1000);
-        this.el.style.bottom = this.y.toFixed(0) + '%';
+    Shell.prototype = new DOMPoint();
+
+    /**
+     * Обновляет состояние объекта
+     *
+     * @property {integer} timeshift Время с последней перерисовки, мс
+     */
+    Shell.prototype.update = function (timeshift) {
+        this.y += 100 * (timeshift / 1000);
+        this.el.style.bottom = this.y.toFixed(2) + '%';
     }
 
-    function Bug(context){
+    /**
+     * Создает экземпляр Bughill (армада жуков)
+     *
+     * @constructor
+     * @property {object} el DOMElement контейнер
+     * @this {Bughill}
+     */
+    function Bughill(el){
+        DOMPoint.call(this);
+
+        this.el = el;
+        this.reset();
+
+        this.el.style.width = BUGHILL_WIDTH + '%';
+
+        this.hSpeed = BUGHILL_HSPEED;
+        this.vSpeed = BUGHILL_VSPEED;
+        this.rtl = false;
+
+        this.update(0);
+        this.length = 0;
+    }
+
+    Bughill.prototype = new DOMPoint();
+
+    /**
+     * Сбрасывает состояние армады
+     */
+    Bughill.prototype.reset = function(){
+        if (this.bugs){
+            for (var i=0, bug; i < this.bugs.length; ++i){
+                bug = this.bugs[i];
+                bug.destroy();
+            }
+        }
+        this.bugs = [];
+        this.y = 0.0;
+        this.x = 0.0;
+    }
+
+    /**
+     * Обновляет состояние объекта
+     *
+     * @property {integer} timeshift Время с последней перерисовки, мс
+     */
+    Bughill.prototype.update = function(timeshift){
+        this.y += this.vSpeed * timeshift / 1000.0;
+
+        if (this.rtl){
+            this.x -= this.hSpeed * timeshift / 1000.0;
+        }else{
+            this.x += this.hSpeed * timeshift / 1000.0;
+        }
+
+        if (this.x < 0){
+            this.x = 0.0;
+            this.rtl = false;
+        }
+
+        if (this.x > (100.0-BUGHILL_WIDTH)){
+            this.x = 100.0 - BUGHILL_WIDTH;
+            this.rtl = true;
+        }
+
+
+        this.el.style.top = this.y.toFixed(2) + '%';
+        this.el.style.left = this.x.toFixed(2) + '%';
+
+    }
+
+    /**
+     * Создает экземпляр Bug
+     *
+     * @constructor
+     * @property {object} bughill DOMElement родительский контейнер
+     * @this {Bug}
+     */
+    function Bug(bughill) {
+        DOMPoint.call(this);
+
         this.el = document.createElement("img");
         this.el.className = "bug";
         this.el.src = "img/bug.gif";
 
-        context.appendChild(this.el);
+        this.replacement = document.createElement("img");
+        this.replacement.src = "img/boom.gif";
+
+        this.active = true;
+
+        bughill.appendChild(this.el);
     }
 
-    Bug.prototype = new Point();
+    Bug.prototype = new DOMPoint();
+
+    /**
+     * Взрывает жука
+     *
+     */
+    Bug.prototype.boom = function(){
+      var that = this;
+
+      playSound("boom");
+
+      this.el.src = this.replacement.src;
+      setTimeout(function(){
+        that.el.style.visibility = "hidden";
+      }, 1000);
+    }
 
     Game = function () {
 
-        var _game       = {},
-            KEY_SPACE = 32, KEY_LEFT = 37, KEY_RIGHT = 39,
-            pressed_keys = 0,
-            context;
+        var _game = {}, pressed_keys;
+
+        /** @const */ var KEY_SPACE = 32, KEY_LEFT = 37, KEY_RIGHT = 39;
 
         _game = {
 
@@ -118,196 +316,281 @@
 
             updated: (new Date()).getTime(),
 
-            snake: null,
+            scores: 0,
+            level: 0,
+            fps: [],
 
-            speed: 20,
+            /**
+             * Завершает игру
+             *
+             */
+            gameOver: function () {
+                var record;
+                var localStorageAvailable = (typeof(localStorage)!=="undefined");
 
-            bugs: [],
-
-            gameOver: function(){
-                var record = localStorage.getItem('scores') || 0;
-
-                if (this.scores > record){
-                    alertify.alert("Game Over. You score is " + this.scores + " scores. It's a new game record!");
-                    localStorage.setItem('scores', this.scores);
+                if(localStorageAvailable){
+                    record = localStorage.getItem('spaceinvaders-scores') || 0;
                 }else{
+                    record = 0;
+                }
+
+                if (this.scores > record) {
+                    alertify.alert("Game Over. You score is " + this.scores + " scores. It's a new game record!");
+                    if(localStorageAvailable){
+                        localStorage.setItem('spaceinvaders-scores', this.scores);
+                    }
+                } else {
                     alertify.alert("Game Over. You score is " + this.scores + " scores. The current game record - " + record + " scores.");
                 }
 
-                this.blocks.intro.style.display      = 'block';
-                this.blocks.canvas.style.display     = 'none';
-                this.blocks.statistics.style.display = 'none';
-                this.blocks.words.style.display      = 'none';
-                this.blocks.letters.style.display    = 'none';
+                this.blocks['intro'].style.display = 'block';
+                this.blocks['screen'].style.display = 'none';
 
-                window.clearTimeout(window.timeout);
-                music.pause();
-                music.currentTime = 0;
+                this.bughill.reset();
+
             },
 
-            addListeners : function () {
+            /**
+             * Кроссбраузерный обработчик событий
+             * @param {object} el DOMElement
+             * @param {string} event
+             * @param {function} fn
+             */
+            bind: function (el, event, fn) {
+                if (typeof el.addEventListener === "function") {
+                    el.addEventListener(event, fn, false);
+                } else if (el.attachEvent) {
+                    el.attachEvent("on" + event, fn);
+                }
+            },
+
+            /**
+             * Вешает обработчики событий на клавиатуре и сенсорном экране (опционально)
+             */
+            addListeners: function () {
                 var keydown, keyup, touchstart, touchmove, touchend, resize;
                 var that = this;
 
-                keydown = function(event){
-                    //console.log('event keydown');
+                //нажатые клавиши хранятся в битах переменной pressed_keys
+                keydown = function (event) {
                     if (event.keyCode == KEY_SPACE) pressed_keys |= 1;
                     if (event.keyCode == KEY_LEFT) pressed_keys |= 2;
                     if (event.keyCode == KEY_RIGHT) pressed_keys |= 4;
                 };
 
-                keyup = function(event){
-                    //console.log('event keyup');
+                keyup = function (event) {
                     if (event.keyCode == KEY_SPACE) pressed_keys &= ~1;
                     if (event.keyCode == KEY_LEFT) pressed_keys &= ~2;
                     if (event.keyCode == KEY_RIGHT) pressed_keys &= ~4;
                 };
 
-                touchstart = function(event){
+                touchstart = function (event) {
                     //console.log('event touchstart');
                     pressed_keys = 0;
                     var middle = window.innerWidth / 2;
-                    for (var i = 0; i< event.touches.length; i++){
+                    for (var i = 0; i < event.touches.length; i++) {
                         if (event.touches[i].pageX < middle) pressed_keys |= 2;
                         else pressed_keys |= 4;
                     }
                 };
 
-                touchmove = function(event){
+                touchmove = function (event) {
                     //console.log('event touchmove');
                     pressed_keys = 0;
                     var middle = window.innerWidth / 2;
-                    for (var i = 0; i< event.touches.length; i++){
+                    for (var i = 0; i < event.touches.length; i++) {
                         if (event.touches[i].pageX < middle) pressed_keys |= 2;
                         else pressed_keys |= 4;
                     }
                 };
 
-                touchend = function(event){
+                touchend = function (event) {
                     //console.log('event touchend');
                     pressed_keys = 0;
                 };
 
-                resize = function(event){
-                    //console.log('resize event', arguments, window.innerWidth);
-                    that.width = window.innerWidth - that.margin*2;
-                    that.height = window.innerHeight -that.margin*2;
-                };
 
-                window.addEventListener("keydown", keydown, false);
-                window.addEventListener("keyup", keyup, false);
-                window.addEventListener("touchstart", touchstart, false);
-                window.addEventListener("touchmove", touchmove, false);
-                window.addEventListener("touchend", touchend, false);
-                window.addEventListener("resize", resize, false);
+                this.bind(document.body, "keydown", keydown);
+                this.bind(document.body, "keyup", keyup);
+                this.bind(window, "touchstart", touchstart);
+                this.bind(window, "touchmove", touchmove);
+                this.bind(window, "touchend", touchend);
 
-                return resize;
+                //return resize;
             },
 
             blocks: {},
 
-            handleKeys: function(timeshift) {
-                if (pressed_keys&1) this.ship.fire(); //7
-                if (pressed_keys&2) this.ship.move(-this.speed*timeshift/1000); //8
-                if (pressed_keys&4) this.ship.move(this.speed*timeshift/1000); //9
+            /**
+             * Проверка нажатых клавиш
+             * @param {integer} timeshift Смещение во времени с последней обработки
+             */
+            handleKeys: function (timeshift) {
+                if (pressed_keys & 1) this.ship.fire(); //7
+                if (pressed_keys & 2) this.ship.move(-SHIP_SPEED * timeshift / 1000); //8
+                if (pressed_keys & 4) this.ship.move( SHIP_SPEED * timeshift / 1000); //9
             },
 
-            checkHits: function(){
+            /**
+             * Переходит к следующему уровню
+             */
+            nextLevel: function(){
+                this.level++;
+                this.blocks.level.innerHTML = this.level;
+
+                var bugs = [];
+                this.bughill.reset();
+                this.bughill.set("length", BUGS_COUNT);
+                for (var i = 0; i < BUGS_COUNT; i++) {
+                    bugs.push(new Bug(this.blocks['bugs']));
+                }
+                this.bughill.set("bugs", bugs);
+
+                var k = Math.pow(1.5, this.level-1); //коэфициент ускорения
+                this.bughill.set("hSpeed", BUGHILL_HSPEED * k);
+                this.bughill.set("vSpeed", BUGHILL_VSPEED * k);
+
+            },
+
+            /**
+             * Обработка уничтожения жука
+             * @param {object} bug уничтоженный жук
+             */
+            addScores: function(bug){
+                var len = this.bughill.get("length");
+                var that = this;
+
+                bug.set("active", false);
+                bug.boom();
+                len--;
+                this.bughill.set("length", len);
+                this.scores++;
+                this.blocks.scores.innerHTML = this.scores;
+                if (len == 0){
+                    playSound('winner');
+                    setTimeout(function() { that.nextLevel() }, 1500);
+                }
+            },
+
+            /**
+             * Проверка столкновений
+             */
+            checkHits: function () {
                 var shell = this.ship.get('shell');
-                if (typeof(shell) !== 'undefined'){
-                    var el;
-                    console.log('checkHits', this.bugs.length, shell);
-                    for(var i=0; i<this.bugs.length; i++){
-                        el = this.bugs[i].get('el');
-                        if (shell.hitTest(this.bugs[i])){
-                            if (el.style.visibility != 'hidden'){
-                                console.log("HIT!");
-                                el.style.visibility = 'hidden';
-                                return true;
+
+                //console.log('checkHits', this.bugs.length, shell);
+                var bugs = this.bughill.get('bugs');
+                for (var i = 0, bug, el; i < bugs.length; i++) {
+                    bug = bugs[i];
+                    if (bug.get('active')){
+                        el = bug.get('el');
+                        if (typeof (shell) !== 'undefined') {
+                            if (shell.hitTest(bug)){
+                              this.addScores(bug);
+                              shell.destroy();
+                              delete this.ship.shell;
+                              return true;
                             }
+                        }
+
+                        if (this.ship.hitTest(bug) || this.ship.isUnder(bug)){
+                            this.gameOver();
                         }
                     }
                 }
                 return false;
-
             },
 
-            animate: function() {
+            /**
+             * Подсчет кадров/секунду
+             */
+            showFPS: function(timeshift){
 
-                var that = this; //2
+                this.fps.push(1000.0/timeshift);
+                if (this.fps.length > 100) {
+                    this.fps.shift();
 
-                var time = (new Date()).getTime(); //3
-                var timeshift = time - this.updated; //4
-                this.updated = time; //5
+                    var sum = 0.0;
+                    for (var i=this.fps.length-1; i>0; i--){
+                        sum += this.fps[i];
+                    }
 
-                this.handleKeys(timeshift); //6
+                    this.blocks.fps.innerHTML = (sum/100.0).toFixed(0);
+                }
+            },
+
+            /**
+             * Обновление положения объектов на экране
+             */
+            animate: function () {
+
+                var that = this;
+                var time = (new Date()).getTime();
+                var timeshift = time - this.updated;
+                this.updated = time;
+                this.handleKeys(timeshift);
                 this.ship.update(timeshift);
+                this.bughill.update(timeshift);
+
+                this.showFPS(timeshift);
 
                 this.checkHits();
 
-                requestAnimationFrame(function(){that.animate();});
+                requestAnimationFrame(function () {
+                    that.animate();
+                });
             },
 
-            reset: function(){
-
+            /**
+             * Сброс игровых переменных (перед началом новой игры)
+             */
+            reset: function () {
                 this.scores = 0;
-                this.renderInfo();
-
+                this.level = 0;
                 pressed_keys = 0;
-
                 this.updated = (new Date()).getTime();
+                this.bughill = new Bughill(this.blocks['bugs']);
+                this.ship = new Ship(this.blocks['ship']);
+                this.blocks.scores.innerHTML = this.scores;
+
             },
 
-            start: function(){
+            /**
+             * Начинает новую игру
+             */
+            start: function () {
                 window.T = this;
                 //console.log('start');
-                if (typeof(this.init) === 'function') this.init();
+                if (typeof (this.init) === 'function') this.init();
 
-                this.blocks.intro.style.display      = 'none';
-                this.blocks.screen.style.display     = 'block';
-                this.blocks.bugs.style.display = 'block';
-                this.blocks.ship.style.display      = 'block';
+                this.blocks.intro.style.display = 'none';
+                this.blocks.screen.style.display = 'block';
 
+                this.reset();
+                this.nextLevel();
                 this.animate();
 
-                // this.snake.reset();
-                // this.snake.set("position", {x:this.width/4, y:this.height/2});
-                // console.log(this.snake.get('position'));
-
-                // this.reset();
-                // this.active = true;
-                // this.addLetter();
-                // this.animate();
-
-                // music.play();
-                // playSound();
-                // sound.play();
-
+                playSound("theme");
             },
 
-            init : function () {
-                console.log('init game');
-
-                ['intro','screen','bugs','ship'].forEach(function(block){
+            /**
+             * Инициализирует блоки и обработчики
+             */
+            init: function () {
+                for (var i = 0, blocks = ['intro', 'screen', 'bugs', 'ship', 'fps', 'level', 'scores'], block; i < blocks.length; ++i) {
+                    block = blocks[i];
                     this.blocks[block] = document.getElementById(block);
-                }, this);
-
-                this.addListeners()();
-                this.ship = new Ship(this.blocks['ship']);
-
-                this.bugs = [];
-
-                for(var i=0;i<30; i++){
-                    this.bugs.push(new Bug(this.blocks['bugs']));
                 }
-
+                this.addListeners();
                 delete this.init;
             }
 
         };
 
         return {
-            start : function() { _game.start(); }
+            start: function () {
+                _game.start();
+            }
         };
     };
 
