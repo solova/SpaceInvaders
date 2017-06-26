@@ -1,4 +1,4 @@
-[Space Invaders](http://xelios20.github.com/SpaceInvaders/) - аркадная игра
+[Space Invaders](http://solova.github.com/SpaceInvaders/) - аркадная игра
 ==================================================
 
 Совместимость
